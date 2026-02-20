@@ -22,3 +22,9 @@ class StockHistoryInput(StockInput):
     start_date: str
     end_date: str
 
+@tool(name_or_callable="get_stock_price" , args_schema=StockInput ,description='A function that returns the current stock price based on a ticker symbol.')
+def get_stock_price(ticker: str):
+    print("get print price tool is being used")
+    stock=yf.Ticker(ticker)
+    return stock.history()["Close"].iloc[-1]
+
