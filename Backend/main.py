@@ -273,5 +273,6 @@ async def chat(request: RequestObject):
     return {"response": result["messages"][-1].content}
 
 if __name__ == '__main__':
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port=os.environ.get("PORT",8000)
+    uvicorn.run(app, host="0.0.0.0", port=port)
     # print("RELIANCE:\n", yf.Ticker("TMCV.NS").history(period="1d"))
