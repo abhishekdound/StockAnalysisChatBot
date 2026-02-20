@@ -28,3 +28,11 @@ def get_stock_price(ticker: str):
     stock=yf.Ticker(ticker)
     return stock.history()["Close"].iloc[-1]
 
+@tool('get_historical_stock_price',args_schema=StockHistoryInput, description='A function that returns the current stock price over time based on a ticker symbol and a start and end date.')
+def get_historical_stock_price(ticker: str, start_date: str, end_date: str):
+    print('get_historical_stock_price tool is being used')
+    stock = yf.Ticker(ticker)
+    return stock.history(start=start_date, end=end_date).to_dict()
+
+
+
