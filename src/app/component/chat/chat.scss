@@ -1,0 +1,38 @@
+.chat {
+  width: 500px;
+  margin: auto;
+  font-family: Arial;
+}
+
+.messages {
+  height: 400px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.user {
+  text-align: right;
+  color: blue;
+  margin: 5px;
+}
+
+.bot {
+  text-align: left;
+  color: green;
+  margin: 5px;
+}
+
+.input-box {
+  display: flex;
+}
+
+input {
+  flex: 1;
+  padding: 8px;
+}
+
+button {
+  padding: 8px 15px;
+}
