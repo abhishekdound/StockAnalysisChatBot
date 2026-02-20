@@ -1,7 +1,7 @@
 import os
-import datetime
+from datetime import datetime
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 # from fastapi.middleware.cors import CORSMiddleware
@@ -34,6 +34,46 @@ class StockHistoryInput(StockInput):
     start_date: str
     end_date: str
 
+    # ---------- PARSE & VALIDATE DATE ----------
+    @field_validator("start_date", "end_date")
+    @classmethod
+    def validate_date_format(cls, value: str):
+        formats = [
+            "%Y-%m-%d",  # 2024-01-01
+            "%d-%m-%Y",  # 01-01-2024
+            "%d/%m/%Y",  # 01/01/2024
+            "%m/%d/%Y",  # 01/01/2024
+        ]
+
+        for fmt in formats:
+            try:
+                dt = datetime.strptime(value.strip(), fmt)
+                return dt.strftime("%Y-%m-%d")  # normalize to YYYY-MM-DD
+            except ValueError:
+                continue
+
+        raise ValueError(
+            "Invalid date format. Use YYYY-MM-DD (example: 2024-01-01)"
+        )
+
+    # ---------- START < END VALIDATION ----------
+    @field_validator("end_date")
+    @classmethod
+    def validate_date_order(cls, end_date, info):
+        start_date = info.data.get("start_date")
+
+        if start_date:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+
+            if start_dt > end_dt:
+                raise ValueError("start_date must be before end_date")
+
+        return end_date
+
+
+LAST_TOOL_OUTPUT = {}
+
 @tool(name_or_callable="get_stock_price" , args_schema=StockInput ,description='A function that returns the current stock price based on a ticker symbol.')
 def get_stock_price(ticker: str):
     print("get_stock_price tool is being used")
@@ -52,12 +92,6 @@ def get_stock_price(ticker: str):
 def get_historical_stock_price(ticker: str, start_date: str, end_date: str):
     print("get_historical_stock_price tool is being used")
 
-    try:
-        # Convert ANY input date → YYYY-MM-DD
-        start_date = datetime.strptime(start_date.replace("/", "-"), "%Y-%m-%d").strftime("%Y-%m-%d")
-        end_date = datetime.strptime(end_date.replace("/", "-"), "%Y-%m-%d").strftime("%Y-%m-%d")
-    except:
-        return "Invalid date format. Use YYYY-MM-DD (example: 2020-01-01)."
 
     stock = yf.Ticker(ticker)
     df = stock.history(start=start_date, end=end_date)
@@ -65,8 +99,9 @@ def get_historical_stock_price(ticker: str, start_date: str, end_date: str):
     if df.empty:
         return f"No historical data found for {ticker}"
 
-    # return df.to_string()
-    return df
+    result = df.to_string()
+    LAST_TOOL_OUTPUT["history"] = result
+    return result
 
 @tool('get_balance_sheet',args_schema=StockInput, description='A function that returns the balance sheet based on a ticker symbol.')
 def get_balance_sheet(ticker: str):
@@ -79,17 +114,17 @@ def get_balance_sheet(ticker: str):
         if bs.empty:
             return f"No balance sheet found for {ticker}"
 
-        latest = bs.iloc[:, 0]
+        bs = stock.balance_sheet
 
-        return f"""
-    Balance Sheet Highlights for {ticker}:
+        summary = {
+            "Total Debt": bs.loc["Total Debt"].iloc[0],
+            "Net Debt": bs.loc["Net Debt"].iloc[0],
+            "Cash": bs.loc["Cash And Cash Equivalents"].iloc[0],
+            "Total Assets": bs.loc["Total Assets"].iloc[0],
+            "Equity": bs.loc["Total Stockholder Equity"].iloc[0]
+        }
 
-    Total Debt: {latest.get('Total Debt')}
-    Net Debt: {latest.get('Net Debt')}
-    Cash & Cash Equivalents: {latest.get('Cash And Cash Equivalents')}
-    Total Assets: {latest.get('Total Assets')}
-    Shareholder Equity: {latest.get('Stockholders Equity')}
-    """
+        return str(summary)
 
     except Exception as e:
         return f"Error fetching balance sheet: {str(e)}"
@@ -106,21 +141,25 @@ def get_stock_news(ticker: str):
             return f"No news found for {ticker}"
 
         headlines = []
-
         for n in news[:5]:
             title = n.get("title") or n.get("headline") or "No title"
-            link = n.get("link") or ""
-            headlines.append(f"{title}\n{link}")
+            headlines.append(title)
 
-        return "\n\n".join(headlines)
+        return "NEWS_HEADLINES:\n" + "\n".join(headlines)
 
     except Exception as e:
         return f"Error fetching news for {ticker}: {str(e)}"
 
+
+@tool(name_or_callable="show_last_history" , description='A function that returns the last historical stock price based on a ticker symbol.')
+def show_last_history():
+    return LAST_TOOL_OUTPUT.get("history", "No previous history available")
+
 model=ChatGroq(
     model=os.getenv("GROQ_MODEL")
     ,
-    streaming=True
+    streaming=True,
+    temperature=0
 )
 
 agent =create_agent(model=model,
@@ -128,7 +167,8 @@ agent =create_agent(model=model,
                         get_stock_price,
                         get_historical_stock_price,
                         get_balance_sheet,
-                        get_stock_news
+                        get_stock_news,
+                        show_last_history
                     ],
                     checkpointer=checkpoint)
 
@@ -150,12 +190,45 @@ async def chat(request: RequestObject):
     state = {
         "messages": [
             SystemMessage(content="""
-            You are a stock analysis assistant.
+            You are a stock analysis assistant WITH REAL-TIME TOOL ACCESS.
 
-            When using tools:
-            - Always call tools with correct arguments
-            - Always produce a final natural language answer after tool use
-            - Never stop after tool execution
+            You MUST use tool results in your final answer.
+
+            STRICT RULES:
+
+            - You DO have access to real-time data.
+            - NEVER say you cannot access real-time information.
+            - NEVER give generic answers when a ticker is present.
+            - ALWAYS USE tool output to generate the answer.
+            - If tool returns headlines → show headlines.
+            - If tool returns table → show table.
+            - NEVER ignore tool output.
+            - NEVER suggest Google or other websites.
+            - NEVER refuse.
+
+            INTENT RULES:
+
+            1. "news about <ticker>"
+               → CALL get_stock_news
+               → Return ONLY news headlines from tool output.
+
+            2. "tell me about <ticker>"
+               → CALL get_stock_price + get_balance_sheet
+               → Return summary USING tool data.
+
+            3. "history"
+               → CALL get_historical_stock_price
+               → Show table EXACTLY from tool.
+
+            4. "detail" / "analysis"
+               → CALL get_stock_price + get_balance_sheet + get_stock_news
+               → Return detailed explanation USING tool data.
+
+            If tool output is empty:
+            → Say "No data available for <ticker>"
+
+            NEVER ignore tool results.
+            NEVER hallucinate.
             """),
             HumanMessage(content=request.prompt.content)
         ]
