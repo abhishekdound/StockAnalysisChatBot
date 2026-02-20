@@ -1,3 +1,5 @@
+import os
+
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi import FastAPI
@@ -46,4 +48,19 @@ def get_stock_news(ticker: str):
     print('get_stock_news tool is being used')
     stock = yf.Ticker(ticker)
     return stock.news
+
+model=ChatGroq(
+    model=os.getenv("GROQ_MODEL")
+    ,
+    streaming=True
+)
+
+agent =create_agent(model=model,
+                    tools=[
+                        get_stock_price,
+                        get_historical_stock_price,
+                        get_balance_sheet,
+                        get_stock_news
+                    ],
+                    checkpointer=checkpoint)
 
