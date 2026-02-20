@@ -34,5 +34,16 @@ def get_historical_stock_price(ticker: str, start_date: str, end_date: str):
     stock = yf.Ticker(ticker)
     return stock.history(start=start_date, end=end_date).to_dict()
 
+@tool('get_balance_sheet',args_schema=StockInput, description='A function that returns the balance sheet based on a ticker symbol.')
+def get_balance_sheet(ticker: str):
+    print('get_balance_sheet tool is being used')
+    stock = yf.Ticker(ticker)
+    return stock.balance_sheet
 
+
+@tool('get_stock_news',args_schema=StockInput, description='A function that returns news based on a ticker symbol.')
+def get_stock_news(ticker: str):
+    print('get_stock_news tool is being used')
+    stock = yf.Ticker(ticker)
+    return stock.news
 
