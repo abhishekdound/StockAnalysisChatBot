@@ -171,8 +171,7 @@ agent =create_agent(model=model,
                         get_balance_sheet,
                         get_stock_news,
                         show_last_history
-                    ],
-                    checkpointer=checkpoint)
+                    ])
 
 class PromptObject(BaseModel):
     content: str
