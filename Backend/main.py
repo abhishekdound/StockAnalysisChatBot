@@ -10,7 +10,7 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain.messages import SystemMessage, HumanMessage
 from langchain_groq import ChatGroq
-from langgraph.checkpoint.memory import InMemorySaver
+# from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.runnables import RunnableConfig
 import yfinance as yf
 # from langchain_community.memory import ConversationBufferWindowMemory
@@ -26,7 +26,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-checkpoint = InMemorySaver()
+# checkpoint = InMemorySaver()
 # checkpoint = ConversationBufferWindowMemory(k=4)
 
 class StockInput(BaseModel):
@@ -187,7 +187,7 @@ class RequestObject(BaseModel):
 
 @app.post("/api/chat")
 async def chat(request: RequestObject):
-    config = RunnableConfig(configurable= {"thread_id": request.threadId})
+    # config = RunnableConfig(configurable= {"thread_id": request.threadId})
 
     state = {
         "messages": [
@@ -269,8 +269,7 @@ async def chat(request: RequestObject):
             SystemMessage(content="You are a stock assistant."),
             HumanMessage(content=request.prompt.content)
         ]
-    },
-    config=config)
+    }
     print({"response": result["messages"][-1].content})
     return {"response": result["messages"][-1].content}
 
