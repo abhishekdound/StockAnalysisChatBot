@@ -13,6 +13,7 @@ from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.runnables import RunnableConfig
 import yfinance as yf
+from langchain.memory import ConversationBufferWindowMemory
 # from langgraph.graph import MessagesState
 import uvicorn
 load_dotenv()
@@ -25,7 +26,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-checkpoint = InMemorySaver()
+# checkpoint = InMemorySaver()
+checkpoint = ConversationBufferWindowMemory(k=4)
 
 class StockInput(BaseModel):
     ticker: str
