@@ -13,7 +13,7 @@ from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.runnables import RunnableConfig
 import yfinance as yf
-from langchain.memory import ConversationBufferWindowMemory
+from langchain_community.memory import ConversationBufferWindowMemory
 # from langgraph.graph import MessagesState
 import uvicorn
 load_dotenv()
