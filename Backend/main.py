@@ -269,7 +269,7 @@ async def chat(request: RequestObject):
             SystemMessage(content="You are a stock assistant."),
             HumanMessage(content=request.prompt.content)
         ]
-    }
+    })
     print({"response": result["messages"][-1].content})
     return {"response": result["messages"][-1].content}
 
