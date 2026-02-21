@@ -93,13 +93,14 @@ def get_stock_price(ticker: str):
 @tool('get_historical_stock_price',args_schema=StockHistoryInput, description='A function that returns the current stock price over time based on a ticker symbol and a start and end date.')
 def get_historical_stock_price(ticker: str, start_date: str, end_date: str):
     print("get_historical_stock_price tool is being used")
-
-
     stock = yf.Ticker(ticker)
     df = stock.history(start=start_date, end=end_date)
 
     if df.empty:
         return f"No historical data found for {ticker}"
+
+   
+    df = df.tail(10)[["Close"]]   
 
     result = df.to_string()
     LAST_TOOL_OUTPUT["history"] = result
@@ -161,7 +162,8 @@ model=ChatGroq(
     model=os.getenv("GROQ_MODEL")
     ,
     streaming=True,
-    temperature=0
+    temperature=0,
+    max_token=512
 )
 
 agent =create_agent(model=model,
