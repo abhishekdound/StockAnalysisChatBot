@@ -162,8 +162,7 @@ model=ChatGroq(
     model=os.getenv("GROQ_MODEL")
     ,
     streaming=True,
-    temperature=0,
-    max_token=512
+    temperature=0
 )
 
 agent =create_agent(model=model,
